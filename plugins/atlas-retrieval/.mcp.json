@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "atlas-retrieval": {
+      "type": "http",
+      "url": "https://retrieval-lance-mcp-production.up.railway.app/mcp"
+    }
+  }
+}

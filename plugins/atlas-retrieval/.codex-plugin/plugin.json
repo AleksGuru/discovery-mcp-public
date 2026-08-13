@@ -1,0 +1,19 @@
+{
+  "name": "atlas-retrieval",
+  "version": "1.1.0",
+  "description": "Evidence-backed Atlas Retrieval research for Codex.",
+  "author": {
+    "name": "Atlas"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Atlas Retrieval",
+    "shortDescription": "Evidence-backed research from Atlas Retrieval.",
+    "longDescription": "Query Atlas Retrieval MCP and turn resolved evidence into decision-ready research.",
+    "developerName": "Atlas",
+    "category": "Productivity",
+    "capabilities": ["Research", "MCP"],
+    "defaultPrompt": "Use Atlas Retrieval to research this decision with resolved evidence."
+  },
+  "mcpServers": "./.mcp.json"
+}

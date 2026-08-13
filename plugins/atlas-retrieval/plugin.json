@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "atlas-retrieval",
+  "version": "1.1.0",
+  "description": "Evidence-backed Atlas Retrieval research.",
+  "author": {
+    "name": "Atlas"
+  },
+  "repository": "https://github.com/AleksGuru/atlas-platform",
+  "keywords": ["atlas", "research", "evidence", "mcp"]
+}
