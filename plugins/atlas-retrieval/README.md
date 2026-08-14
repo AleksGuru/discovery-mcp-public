@@ -9,6 +9,19 @@ search, then reranks them with Nemotron. Current cards, metrics, bounded history
 hydrated from Evidence/PostgreSQL. The public package contains neither database access nor internal
 Evidence credentials.
 
+## Quick start
+
+Ask Atlas in ordinary language. For example:
+
+- `Find AI projects that help children learn math through play.`
+- `Compare the 10 strongest products and show scale, growth signals and sources.`
+- `Find evidence for this hypothesis and separate counterarguments.`
+- `Save this hypothesis with these projects and my feedback.`
+
+Add a segment, platform, geography, metric or time window only when it matters. Atlas finds the
+candidate projects, returns current Evidence facts and citations, and can save your selected list
+with project-specific feedback when you explicitly ask it to.
+
 ## Install in Codex
 
 The closed-beta distribution repository is
