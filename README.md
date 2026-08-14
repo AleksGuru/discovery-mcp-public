@@ -5,6 +5,9 @@ Public Codex distribution for the Atlas Retrieval research plugin. Installing it
 - the `atlas-retrieval-research` skill, which guides evidence-backed project research;
 - the production Atlas MCP connection, authenticated through an Atlas beta account.
 
+Version 1.2.0 uses LanceDB for candidate discovery and Evidence/PostgreSQL for the current facts,
+metric history and citations returned by MCP.
+
 ## Install
 
 ```bash

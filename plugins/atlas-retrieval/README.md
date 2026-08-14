@@ -4,6 +4,11 @@ Install this as one plugin. The installation exposes both the
 `atlas-retrieval-research` skill and the production `atlas-retrieval` MCP server; do not install
 them separately for normal closed-beta use.
 
+Production retrieval uses LanceDB only to find candidates with OpenAI embeddings and full-text
+search, then reranks them with Nemotron. Current cards, metrics, bounded history and citations are
+hydrated from Evidence/PostgreSQL. The public package contains neither database access nor internal
+Evidence credentials.
+
 ## Install in Codex
 
 The closed-beta distribution repository is
