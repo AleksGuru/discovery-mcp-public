@@ -1,6 +1,6 @@
 ---
 name: atlas-retrieval-research
-description: Build evidence-backed market, product, competitor, trend, opportunity, or hypothesis analysis from Atlas Retrieval MCP. Use when a user asks Codex to discover or compare projects, evaluate scale or growth, inspect features or funding, find semantic alternatives, or turn current Atlas facts and metric history into a decision-ready answer. Use LanceDB for candidate discovery and Evidence/PostgreSQL for returned facts; resolve every cited Atlas claim before answering.
+description: Build evidence-backed market, product, competitor, trend, opportunity, or hypothesis analysis from Atlas Retrieval MCP. Use when a user asks Codex to discover or compare projects, evaluate scale or growth, inspect features or funding, find semantic alternatives, or turn current Atlas facts and metric history into a decision-ready answer. Also use when, in the Atlas Retrieval context, a user asks what Atlas MCP can do, how to use it, or requests a short onboarding. Use LanceDB for candidate discovery and Evidence/PostgreSQL for returned facts; resolve every cited Atlas claim before answering.
 ---
 
 # Atlas Retrieval Research
@@ -12,6 +12,27 @@ signals, not evidence.
 
 Read [mcp-response-contract.md](references/mcp-response-contract.md) before interpreting tool
 responses and [evidence-contract.md](references/evidence-contract.md) before synthesizing claims.
+
+## Short onboarding
+
+When the user asks what Atlas MCP can do or how to use it, answer in the user's language without
+calling MCP unless the user also asks to check the live connection. Keep the answer short and use
+this shape:
+
+1. Describe Atlas MCP as a project discovery and evidence service. It can find projects by meaning
+   and keywords, compare scale and momentum, inspect current metrics and dated history, find similar
+   projects, assemble support and counterarguments, resolve citations, and save selected projects
+   with the user's hypothesis and feedback.
+2. Give a three-step guide: ask a normal research question; optionally name the segment, platform,
+   geography, metric or time window; then ask for evidence, comparison, counterarguments or saving.
+3. Offer a few concrete prompts, adapted to the user's language:
+   - "Find AI projects that help children learn math through play."
+   - "Compare the 10 strongest products and show scale, growth signals and sources."
+   - "Find evidence for this hypothesis and separate counterarguments."
+   - "Save this hypothesis with these projects and my feedback."
+
+Do not dump internal tool names, architecture or authentication details in the onboarding. Do not
+claim that the live MCP connection works unless it was checked in the current task.
 
 ## Access and timebox
 
