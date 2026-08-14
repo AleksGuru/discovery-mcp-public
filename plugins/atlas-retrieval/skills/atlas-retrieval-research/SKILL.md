@@ -1,114 +1,112 @@
 ---
 name: atlas-retrieval-research
-description: Build evidence-backed market, product, competitor, trend, opportunity, or hypothesis analysis from Atlas Lance Retrieval MCP. Use when a user asks Codex to discover or compare projects, evaluate scale or growth, inspect features or funding, find semantic alternatives, or turn Atlas facts and metric history into a decision-ready answer. Resolve every cited Atlas claim before answering.
+description: Build evidence-backed market, product, competitor, trend, opportunity, or hypothesis analysis from Atlas Retrieval MCP. Use when a user asks Codex to discover or compare projects, evaluate scale or growth, inspect features or funding, find semantic alternatives, or turn current Atlas facts and bounded metric history into a decision-ready answer. Treat LanceDB as candidate retrieval and Evidence/PostgreSQL as the source of returned facts; resolve every cited Atlas claim before answering.
 ---
 
 # Atlas Retrieval Research
 
-Use Atlas Lance MCP as the factual substrate. Treat retrieval scores and similarities as discovery
-signals, not evidence. Read [mcp-response-contract.md](references/mcp-response-contract.md) before
-interpreting tool responses and [evidence-contract.md](references/evidence-contract.md) before
-synthesizing claims.
+Use Atlas Retrieval MCP as a two-stage system: LanceDB finds candidates with OpenAI embeddings and
+full-text search, then Nemotron reranks them; Evidence/PostgreSQL supplies the current cards,
+metrics, history, claims and citations returned to the user. Retrieval scores and similarities are
+discovery signals, never evidence.
 
-## Access and timebox
+Read [mcp-response-contract.md](references/mcp-response-contract.md) before interpreting tool
+responses and [evidence-contract.md](references/evidence-contract.md) before synthesizing claims.
+
+## Access and budget
 
 Read the plugin [access guide](../../README.md) before connecting. Authentication is client-managed;
 never place credentials in package files or guess headers after an authorization failure.
 
-Start an elapsed-time clock with the first retrieval call. The practical research limit is 30
-minutes and the absolute safety ceiling is 1,000 MCP calls. At 30 minutes, return the best complete
-partial result, name unfinished gaps, and ask for explicit permission to continue. Do not silently
-reduce the requested scope merely to finish sooner.
+Default to at most 12 MCP calls and eight elapsed minutes: up to three prepared searches, two
+similarity expansions, two detailed projects and two evidence-resolution batches. Stop earlier when
+the decision is supported. Do not exceed 20 calls or ten minutes unless the user explicitly asks for
+an exhaustive run and accepts a larger budget.
 
-## Discovery workflow
+## Research workflow
 
-1. **Define relevance.** Restate the request as a decision and define direct relevance, comparison
-   axes, key scale metrics, growth windows, counterevidence and exclusions.
-2. **Target at least 10.** Seek at least 10 unique relevant Atlas projects. If more materially
-   relevant projects are available within the timebox, show more. If Atlas cannot support 10 after
-   the expansion steps below, show every supported match and explicitly report the shortfall.
-3. **Prepare every text search.** Call `prepare_search_query` for the exact wording and wait until
-   both embedding and decomposition are ready before `search_projects`. Start searches with
-   `limit=20`; increase within the server limit when useful.
-4. **Search from several angles.** Use distinct but still query-relevant formulations for the
-   direct workflow, adjacent substitutes and counterexamples. All retained projects must remain
-   semantically related to the request; different angles are not permission to add generic popular
-   companies.
-5. **Expand from good seeds.** If `search_projects` returns fewer than 10 strong results but at
-   least one or two good seeds, call `find_similar_projects` for up to three strongest seeds,
-   deduplicate by `entity_id`, then validate each neighbour against the original request. Similarity
-   is non-canonical and does not by itself prove that a project is a competitor.
-6. **Use web only for a named coverage gap.** If Atlas still has too few companies, Codex may use
-   its built-in web search without separate permission. Keep external leads separate. For every
-   useful external company, make at least one Atlas attempt using its exact name or a precise
-   semantic query; if the exact company is absent, try to find its closest Atlas analogue. Never
-   overwrite Atlas values with web values.
-7. **Hydrate every displayed project.** Call `get_project` for every project included in the final
-   tables. Search hits and `analyze_feature` examples are discovery records, not sufficient support
-   for project facts. Use structured `features` from `get_project`; feature-analysis matches are
-   retrieval-derived rather than canonical feature labels.
-8. **Resolve evidence.** Build a fact ledger, collect every citation ID used in prose or tables and
-   call `fetch_evidence` in bounded batches. Remove unsupported claims or label the precise gap.
+1. **Define relevance.** Restate the decision, direct cohort, adjacent comparisons, scale metrics,
+   growth windows, counterevidence and exclusions.
+2. **Prepare each exact search.** Call `prepare_search_query` for the exact wording and continue only
+   when both embedding and decomposition are ready. Do not prepare speculative queries.
+3. **Search from at most three angles.** Start with `limit=20`: direct matches, a named adjacent
+   cohort and counterexamples. Russian/English lexical variants are generated by the service; do
+   not duplicate them manually. Keep query-plan filters disabled unless the user explicitly asks
+   for them. Pass explicit filters when requested.
+4. **Use final search items as current facts.** In production, `search_projects.data.items` is
+   batch-hydrated from Evidence. It is sufficient for the returned summary, current metrics,
+   momentum and attached citations. Do not call `get_project` once per displayed row.
+5. **Hydrate only for depth.** Call `get_project` for at most two decisive projects when the answer
+   needs bounded metric history, detailed fields, official links, provider detail or claim-level
+   inspection unavailable in the search item.
+6. **Expand only strong seeds.** If direct search misses a named part of the cohort, call
+   `find_similar_projects` for at most two strong seeds, deduplicate by `entity_id`, and re-check
+   relevance. Similarity is non-canonical. It cannot prove competition or a relationship.
+7. **Build a fact ledger.** Record entity and grain, claim, metric key, value, unit, state,
+   observation date/window, source, current card version and citation IDs. Preserve
+   `indexed_card_version`, `current_card_version` and `index_stale` as retrieval-freshness metadata,
+   not as product facts.
+8. **Resolve only missing evidence.** Citations already present in a tool envelope are resolved.
+   Call `fetch_evidence` only for citation IDs used in the answer but absent from those envelopes,
+   in at most two bounded batches. Remove or label any unresolved claim.
+9. **Run a completeness gate.** Check cohort coverage, comparable metric coverage, history scope,
+   missing values, contradictions, `warnings`, `degraded_modes`, unindexed matches and alternative
+   explanations. Search again only for a named gap.
+10. **Answer the decision.** Separate facts from inference. Lead with a calibrated conclusion,
+    then show the relevant landscape, comparable metrics, momentum, counterevidence, limitations
+    and the smallest next test.
 
-## Default analytical views
+## Analytical views
 
-Unless the user asks for another organization, present three possibly overlapping views. Do not
-force a project into only one bucket:
+Use the views the question needs; do not force every answer into all three:
 
-1. **Closest semantic matches** — strongest original-query relevance using reranker, dense/lexical
-   reasons and verified project features.
-2. **Largest relevant projects** — sort only the relevant cohort by comparable key scale metrics,
-   such as website visits, safe active-user observations, downloads, installs, funding or GitHub
-   scale. Never combine unlike units into one invented size score.
-3. **Fastest-growing relevant projects** — use compatible dated histories or explicit growth
-   metrics. A single current observation is not growth.
+1. **Closest matches** — original-query relevance supported by dense/full-text reasons and the
+   reranker. Scores compare only inside one result set.
+2. **Largest relevant projects** — compare only the relevant cohort inside one metric family and
+   compatible units, dates, geography and entity grain.
+3. **Fastest-growing relevant projects** — use explicit typed momentum or compatible dated history.
+   Intersect `rank_trending_projects` with the relevant cohort; global popularity is not relevance.
 
-Use `rank_trending_projects` as supporting discovery or validation, then intersect its entities with
-the semantically relevant cohort. Do not present a globally trending but irrelevant company.
+## Growth and app semantics
+
+- Treat `website_monthly_visits_growth_ratio`, `github_growth_61d` and `github_growth_6m` as
+  distinct signals with their stated windows.
+- Call `app_installs_weekly` and `app_installs_monthly` velocity, not growth.
+- Treat `app_rating_count_weekly` as a weekly delta.
+- For app success, preserve `app_best_rank_ever`, `app_ever_top_10`,
+  `app_first_top_10_at`, `app_rank_observation_days` and every returned milestone grain.
+- A lower app rank number is better. Never infer time-to-success without a canonical founded or
+  launched date.
+- `app_update_stale_90d=true` means the latest known store update is strictly older than 90 days.
+  `null` means unknown. Treat staleness as maintenance risk, not proof of poor quality.
+- Never use application `release_date` as the company founding date.
 
 ## Presentation rules
 
-- Make every project name link to `get_project.data.project.local_card_url`, the Atlas Platform
-  card. Product websites and provider pages belong only in secondary evidence/source columns.
-- Format human-facing numbers compactly and without false precision: `3,139,013` → `3.1M`,
-  `12,430` → `12.4K`, `$2,500,000` → `$2.5M`, and percentages to one sensible decimal.
-- For returned website visits or safe MAU values below 1,000, display `<1K`, not a precise small
-  number. Current MCP intentionally excludes unsafe `mau` aliases; never substitute visits for MAU.
-- For a returned company-scale value of `0`, say the data has too few observations to establish
-  scale. Do not describe the company itself as having zero users or traction. Preserve an explicit
-  `data_state=zero` in the evidence notes when relevant.
-- Keep visits, MAU, WAU, downloads, installs, users, revenue, ranks, ratings, funding and GitHub
-  signals in separate metric families with dates and units.
-- When website-visit history is returned, describe direction, period and rounded start/end values.
-  When application-rank history is returned, state that a lower rank number is better and describe
-  improvement, decline or volatility. If both are available, an overall dynamics paragraph is
-  mandatory.
-- When funding exists, show the rounded total and list every returned investor name from
-  `project.funding.investors`; include round/category when returned. If the list is empty, say that
-  investor names are unavailable rather than inferring them.
-- Keep factual statements and interpretations separate. Cite the exact Atlas citation ID next to
-  each material fact or number.
+- Use the primary or official link returned by Evidence. Do not invent an Atlas card URL when the
+  current contract does not return one.
+- Format human-facing numbers compactly and without false precision: `3,139,013` to `3.1M`,
+  `12,430` to `12.4K`, and percentages to one sensible decimal.
+- Keep visits, active users, downloads, installs, revenue, ranks, ratings, funding and GitHub
+  signals separate. Website visits are not MAU.
+- A zero with `data_state=zero` is an observation; missing is not zero.
+- Cite the exact Atlas citation ID next to every material factual or numeric statement.
 
 ## Answer shape
 
-1. Calibrated conclusion and coverage count.
-2. Closest semantic matches table.
-3. Largest relevant projects table.
-4. Fastest-growing relevant projects table.
-5. Features, funding/investors and combined dynamics where available.
-6. Counterevidence, external leads attempted in Atlas, and limitations.
-7. Complete resolved source bundle and the next validation step.
+1. Calibrated conclusion, coverage and confidence.
+2. Compact relevant-project table with current facts and dates.
+3. Comparable scale and typed momentum evidence.
+4. Interpretation explicitly separated from facts.
+5. Counterevidence, coverage gaps and alternative explanations.
+6. Complete source bundle for every citation used and the next validation step.
 
-Prefer compact tables. If a project appears in several views, link the same Atlas card each time and
-avoid duplicating its full description.
+## Failure and external-evidence boundaries
 
-## Evidence boundaries
-
-- Never call website visits MAU, infer growth from a point observation, turn missing into zero, or
-  combine incompatible units, windows, geographies or entity grains.
-- Treat `current_snapshot_fallback` as a point observation, not history.
-- Treat `features` and funding investors as card fields only when returned by `get_project` and
-  backed by its claim/citation bundle.
-- Treat `find_similar_projects`, `analyze_feature`, graph expansion and retrieval ranks as derived
-  discovery signals, not canonical relationships or causal evidence.
+- If Evidence is unavailable, Atlas fails closed. Do not use stale Lance facts or silently replace
+  Atlas with memory.
+- Preserve `warnings`, including `unindexed_matches`; projects absent from the active Lance
+  generation cannot enter semantic results even if they exist in Evidence.
+- Use web or Firecrawl only when the user requests external gap-fill. Finish the Atlas ledger first,
+  keep external sources separate and never overwrite Atlas values.
 - Report insufficient evidence rather than padding the cohort with weak matches.

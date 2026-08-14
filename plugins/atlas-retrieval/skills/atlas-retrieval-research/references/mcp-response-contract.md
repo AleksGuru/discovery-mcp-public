@@ -1,126 +1,108 @@
 # Atlas Retrieval MCP response contract
 
-This reference defines every stable field returned by the eight public tools in the current Atlas
-Retrieval implementation. Fields described as dynamic JSON may contain source-specific nested keys;
-do not invent or depend on undocumented nested keys.
+This reference documents the stable public fields needed by the research workflow. The production
+path uses LanceDB for candidate retrieval and Evidence/PostgreSQL for current facts.
 
 ## Shared `ToolResult` envelope
 
-Seven tools return this envelope; `prepare_search_query` is the exception.
+Seven tools return this envelope; `prepare_search_query` returns a plain object.
 
 | Field | Meaning |
 | --- | --- |
-| `result_type` | Stable discriminator for the tool result shape. |
+| `result_type` | Stable discriminator for the tool-specific `data` shape. |
 | `data` | Tool-specific object documented below. |
-| `citations` | Resolved `Citation[]` supporting returned facts. |
-| `degraded_modes` | Retrieval stages that were unavailable or deliberately disabled. Empty means no reported degradation. |
-| `warnings` | Evidence, comparability or derived-signal cautions that must be preserved. |
-| `snapshot_id` | Immutable Evidence/Lance snapshot identity, or `null` when unavailable. |
+| `citations` | Resolved current Evidence citations supporting returned facts. |
+| `degraded_modes` | Unavailable or disabled retrieval stages. Empty means no reported degradation. |
+| `warnings` | Coverage, freshness or comparability cautions that must be preserved. |
+| `snapshot_id` | Active immutable Lance generation identity. It is not the current-facts timestamp. |
 | `configuration` | Active server configuration identity. |
-| `stage_latency_ms` | Per-stage timings as `{stage, elapsed_ms}`. Timings are diagnostics, not relevance evidence. |
+| `stage_latency_ms` | Diagnostic `{stage, elapsed_ms}` timings; never relevance evidence. |
+
+Evidence-backed responses put `fact_source=evidence_http` and `facts_as_of` inside `data`. The
+service fails closed when Evidence cannot supply current facts; it does not return old Lance facts.
 
 ### `Citation`
 
 | Field | Meaning |
 | --- | --- |
-| `citation_id` | Stable Atlas citation identifier passed to `fetch_evidence`. |
-| `entity_id` | Canonical Atlas project/entity identifier. |
-| `card_version` | Version of the card supported by the citation. |
+| `citation_id` | Stable Atlas identifier accepted by `fetch_evidence`. |
+| `entity_id` | Canonical Atlas entity ID. |
+| `card_version` | Current card version supported by this citation. |
 | `kind` | `card`, `source` or `metric`. |
-| `locator` | Field or observation location inside the versioned projection. |
-| `source_key` | Provider/source identity, when known. |
-| `source_url` | Original source URL, when recorded; may be `null`. |
-| `observed_at` | Observation timestamp/date, when known. |
-| `data_state` | Evidence state such as observed, missing or zero. Do not equate missing with zero. |
+| `locator` | Current card field or metric-observation location. |
+| `source_key`, `source_url` | Recorded source identity and URL; either may be `null`. |
+| `observed_at` | Observation date/time, when known. |
+| `data_state` | Observed, zero, missing or another explicit evidence state. |
 | `value` | Resolved scalar or JSON payload supported by the citation. |
 
 ### `ClaimEvidence`
 
-| Field | Meaning |
-| --- | --- |
-| `claim_id` | Stable claim identity within the project. |
-| `field_path` | Project field supported by this claim. |
-| `value` | Claimed scalar or JSON value. |
-| `data_state` | State of the claimed value. |
-| `citation_ids` | One or more citations required to use the claim. |
+`claim_id`, `field_path`, `value`, `data_state` and `citation_ids` bind a returned field to one or
+more citations. Use all required IDs for a material claim.
 
 ## `prepare_search_query`
 
-This tool returns a plain object rather than `ToolResult`.
+Call this once for each exact text passed to `search_projects`.
 
 | Field | Meaning |
 | --- | --- |
-| `required` | Always `true`; exact query preparation is required. |
-| `state` | Combined `ready`, `pending`, `failed` or offline `missing` state. Search only when ready. |
-| `embedding_state` | Dense-query job state: `missing`, `pending`, `processing`, `ready` or `failed`; omitted in frozen-only mode. |
-| `decomposition_state` | Query-plan job state; omitted in frozen-only mode. |
+| `required` | Exact query preparation is required. |
+| `state` | Combined `ready`, `pending`, `failed` or offline `missing` state. |
+| `embedding_state`, `decomposition_state` | Durable OpenAI embedding and query-plan states. |
 | `dense_kind` | Dense model family, currently `openai`. |
 | `source` | `frozen_artifact`, `dynamic_cache`, `document_cache` or `null`. |
-| `attempts` | Durable preparation attempt count; omitted in frozen-only mode. |
-| `error_code` | Sanitized preparation error, or `null`. |
-| `retry_after_ms` | Suggested polling delay, or `null`. |
-| `provider_calls_in_request_path` | Always `false`; provider work occurs in a separate worker. |
+| `attempts`, `error_code`, `retry_after_ms` | Durable preparation diagnostics. |
+| `provider_calls_in_request_path` | Always `false`; provider work runs in a separate worker. |
+
+Search only when both components and the combined state are ready.
 
 ## Search structures
 
 ### `SearchHit`
 
-Returned in search results, similarity results, feature examples and research bundles.
+Final search and similarity items contain:
 
-| Field | Meaning |
-| --- | --- |
-| `entity_id` | Canonical Atlas entity ID; use for `get_project` and similarity expansion. |
-| `project_name` | Display name. |
-| `card_version` | Version of the source card. |
-| `entity_grain` | Entity grain, for example app, company or project. Compare like grains. |
-| `status` | Current Atlas lifecycle/status value. |
-| `summary` | Compact text used for discovery; not a complete card. |
-| `is_ai` | AI classification, or `null` when not established. |
-| `is_asian` | Asian-market classification, or `null`. |
-| `domain` | Controlled/derived domain value, or `null`. |
-| `user_type` | User/customer type, or `null`. |
-| `platforms` | Detected platform names from `github`, `ios`, `android`, `web`. |
-| `rerank_text` | Bounded text supplied to reranking. It is retrieval context, not a structured fact source. |
-| `score` | Fused retrieval score. Compare only inside the same result set. |
-| `reranker_score` | Local Qwen reranker score, or `null`. It is relevance, not quality. |
-| `lexical_rank` | Full-text rank, or `null` if absent from that candidate channel. |
-| `dense_rank` | Vector rank, or `null`. |
-| `graph_rank` | Graph-expansion rank, or `null`. |
-| `relation_type` | Graph relation type for an expanded hit, or `null`; derived, not a citation. |
-| `relation_basis` | Basis of that graph relation, or `null`. |
-| `citation_ids` | Card/metric citations associated with the hit. |
-| `metrics` | Hydrated `MetricValue[]`; populated for final search items but may be empty in `candidate_trace`. |
-| `reasons` | Retrieval channels contributing to the hit, for example `dense` or `full_text`. |
-| `claim_evidence` | Claim-level evidence when populated; search hits may return an empty list. |
+- identity: `entity_id`, `project_name`, current `card_version`, `entity_grain`, `status`;
+- current Evidence facts: `summary`, classifications, `platforms`, `metrics`, `momentum`,
+  `claim_evidence`, `citation_ids`;
+- retrieval diagnostics: `score`, `reranker_score`, `dense_rank`, `lexical_rank`, `graph_rank`,
+  `reasons`, optional relation fields;
+- freshness trace: `indexed_card_version`, `current_card_version`, `index_stale`.
+
+`reranker_score` is relevance, not project quality. Scores compare only inside one result set.
+`index_stale=true` means Lance selected the entity using older indexed text; the returned card and
+metrics still come from the newer Evidence version.
 
 ### `MetricValue`
 
-| Field | Meaning |
-| --- | --- |
-| `key` | Metric key; never infer its definition from the number alone. |
-| `value` | Number, text, boolean or `null`. |
-| `state` | Data state. |
-| `unit` | Unit, or `null`. |
-| `observed_at` | Observation date/time, or `null`. |
-| `citation_ids` | Supporting metric citations. |
+Each metric has `key`, `value`, `state`, `unit`, `observed_at` and `citation_ids`. Never infer a
+definition from the number alone.
+
+### `momentum`
+
+The typed object may contain:
+
+- `website_monthly_visits_growth_ratio`;
+- `github_growth_61d`, `github_growth_6m`;
+- `app_installs_weekly`, `app_installs_monthly` with `signal_kind=velocity`;
+- `app_rating_count_weekly` with `signal_kind=weekly_delta`;
+- `app_best_rank_ever`, `app_ever_top_10`, `app_first_top_10_at`;
+- `app_rank_observation_days`, `app_top_10_milestones`;
+- `app_store_last_updated`, `app_store_update_age_days`, `app_update_stale_90d`;
+- `app_update_signal_kind=maintenance_risk`.
+
+Null means unknown. A lower app rank is better. Preserve every returned top-10 milestone grain.
 
 ### `QueryPlan`
 
-| Field | Meaning |
-| --- | --- |
-| `lexical_query` | Normalized full-text query used by retrieval. |
-| `subqueries` | Up to four decomposition subqueries. |
-| `is_ai`, `is_asian` | Proposed boolean filters, or `null`. |
-| `platforms` | Proposed platform filters. |
-| `user_types` | Proposed user-type filters. |
-| `domains` | Proposed domain filters. |
-| `metric_filters` | Proposed typed metric filters. |
-| `explanation` | Short query-plan rationale. |
+The plan contains `lexical_query_ru`, `lexical_query_en`, up to four `subqueries`, proposed
+classifications/filters and an `explanation`. It is prepared by OpenAI but is not evidence.
+Query-plan filters are disabled by default; use `query_plan_filters_applied` and `applied_filters`
+to determine what actually constrained results.
 
-Each returned metric filter contains `key`, `operator`, `value`, optional `value_high`, `states`,
-optional `unit`, `observed_after` and `observed_before`. Applied filters additionally contain
-`entity_grains`, `statuses`, `is_ai`, `is_asian`, `platforms`, `user_types`, `domains` and
-`metric_filters`.
+Typed metric filters use `key`, `operator`, `value`, optional `value_high`, states, unit and optional
+observation bounds. In production they are checked against current Evidence values, never an old
+Lance value or a historical value that merely once satisfied the threshold.
 
 ## `search_projects`
 
@@ -128,109 +110,76 @@ optional `unit`, `observed_after` and `observed_before`. Applied filters additio
 
 | Field | Meaning |
 | --- | --- |
-| `query` | Exact normalized user query. |
-| `query_plan` | `QueryPlan` or `null`. |
-| `applied_filters` | Actual validated filter object; inspect this rather than assuming proposed filters were accepted. |
-| `items` | Final reranked and metric-hydrated `SearchHit[]`, limited by the request. |
-| `candidate_trace` | Larger fused/reranked `SearchHit[]` before final metric hydration; diagnostic discovery only. |
+| `query` | Exact normalized query. |
+| `query_plan` | Prepared plan or `null`. |
+| `query_plan_filters_applied` | Whether plan-proposed filters were actually applied. |
+| `lexical_queries` | Exact plus generated Russian/English FTS variants. |
+| `applied_filters` | Explicit current-value filter contract used by search. |
+| `metric_sort` | Optional current Evidence metric sort. |
+| `items` | Final reranked results, batch-hydrated from Evidence, bounded by `limit`. |
+| `candidate_trace` | Larger retrieval-only diagnostic trace before final hydration. |
+| `fact_source`, `facts_as_of` | Current-fact source and Evidence read timestamp. |
+| `rescue_ran` | Whether a bounded structured Evidence rescue was attempted. |
 
-Search combines dense vector retrieval and FTS, fuses the channels, optionally expands the graph,
-then reranks locally. `dense_rank`/`lexical_rank` and `reasons` show which paths contributed.
+The pipeline is OpenAI dense + Lance FTS, RRF fusion, optional graph expansion and Nemotron
+reranking. Explicit filters are verified in one Evidence batch after Lance selection. If too few
+candidates remain, or `metric_sort` is requested, a bounded Evidence rescue may add only entities
+already present in the active Lance generation. Missing indexed entities produce an
+`unindexed_matches` warning.
+
+Final `items` are current fact records and can support the summary/current-metric table without an
+N+1 `get_project` loop. Use `candidate_trace` only to debug retrieval coverage and ranks.
 
 ## `get_project`
 
-`result_type=project_detail`; `data.project` contains:
+`result_type=project_detail`; `data` contains:
 
 | Field | Meaning |
 | --- | --- |
-| `entity_id`, `project_name`, `status`, `card_version`, `entity_grain` | Versioned Atlas identity fields. |
-| `updated_at` | Card update timestamp. |
-| `snapshot_id` | Snapshot containing this card. |
-| `local_card_url` | Public Atlas Platform project URL. Use this as the primary user-facing link. |
-| `description` | Card description, or `null`. |
-| `classification` | Object with `is_ai`, `is_asian`, `domain`, `user_type`, `entity_grain`, `platforms`. |
-| `audience` | Source-projected audience JSON, or `null`; nested keys vary by available evidence. |
-| `market` | Source-projected market-size JSON, or `null`; preserve unit, geography, range, confidence and methodology when present. |
-| `badges` | Scalar badge labels retained by the Retrieval projection. |
-| `tags` | String tags. |
-| `links` | Source-projected link records. Common keys are `url` and `link_type`/`type`; other keys are dynamic. Use `local_card_url` as the main link. |
-| `features` | Structured card feature strings. Empty means unavailable, not that the product has no features. |
-| `funding` | Structured Crunchbase funding object documented below. |
-| `aggregate_metrics` | Current and historical metric groups documented below. |
-| `scores` | Dynamic Atlas score/formula JSON. Do not treat scores as source evidence or mix them with raw metrics. |
-| `claim_evidence` | `ClaimEvidence[]` for card fields and observations. |
-| `history_scope` | Overall metric-history scope, normally `evidence_metric_observations`. |
-| `history_complete` | Whether the generation has a complete Evidence metric-history projection. |
+| `project` | Current Evidence object: identity, `summary`, `detail`, `links`, current `metrics`, bounded `metric_history`, labels, scores and `updated_at`. |
+| `classification` | Current `entity_grain`, `domain`, `user_type`, `is_ai`, `is_asian`, `platforms`. |
+| `momentum` | Typed current momentum described above. |
+| `claim_evidence` | Claim bindings from Evidence. |
+| `fact_source`, `facts_as_of` | Current-fact source and read timestamp. |
 
-### `funding`
-
-| Field | Meaning |
-| --- | --- |
-| `status` | Crunchbase/provider availability status, or `null`. |
-| `source_key` | Funding provider identity, or `null`. |
-| `profile_url` | Provider profile URL, or `null`. |
-| `total_usd` | Provider total funding in USD, or `null`; the canonical metric may also appear in `aggregate_metrics`. |
-| `round_count` | Known funding-round count, or `null`. |
-| `disclosed_round_count` | Rounds with disclosed amounts, or `null`. |
-| `investors` | Investor records. `name` is required for retained records; `round`, `category` and other provider fields are optional. |
-
-### `aggregate_metrics[]`
-
-| Field | Meaning |
-| --- | --- |
-| `key` | Metric family key. |
-| `current` | Latest observation object. |
-| `history` | Newest-first compatible observation objects. |
-| `history_scope` | `evidence_metric_observations` or `current_snapshot_fallback`. The latter is not a time series. |
-| `history_complete` | Whether history is complete for the generation. |
-
-A current/fallback observation contains `value`, `unit`, `data_state`, `observed_at`,
-`citation_ids`. A historical observation additionally contains `observation_id`, `value_kind`,
-`source_key` and `confidence`. Current MCP excludes unsafe `mau` and `monthly_active_users` aliases;
-website visits must never be relabelled as active users.
+History is bounded to at most 24 observations per metric. Use `summary.card_ui.primary_link` or an
+official item in `links` for user-facing links. Nested Evidence card fields are dynamic JSON; do not
+invent absent keys. `scores` are Atlas formulas, not raw source metrics.
 
 ## `find_similar_projects`
 
-`result_type=similar_projects`; `data` contains `source_entity_id` and `items` (`SearchHit[]`). It
-uses the stored source-project embedding directly: no text query, FTS, query preparation or reranker.
-The source entity is excluded. Similarity is retrieval-derived and non-canonical.
+`result_type=similar_projects`; `data` contains `source_entity_id`, current Evidence-hydrated
+`items`, `fact_source` and `facts_as_of`. Candidate similarity uses the stored source embedding and
+is non-canonical; it does not prove competition or a graph relationship.
 
 ## `rank_trending_projects`
 
-`result_type=trend_ranking`; `data.rankings[]` contains:
+`result_type=trend_ranking`; `data` contains `rankings`, `fact_source` and `facts_as_of`.
+Each ranking has:
 
-| Field | Meaning |
-| --- | --- |
-| `metric_key` | Metric ranked independently. |
-| `observed` | Number of qualifying rows observed before the minimum-coverage gate. |
-| `items` | Descending metric rows, or empty when coverage is below `min_observed`. |
+- `metric_key`: one typed momentum signal;
+- `observed`: current Evidence coverage before the minimum gate;
+- `items`: current projects with identity, card version and full `momentum` object.
 
-Each item contains `entity_id`, `metric_key`, `value_json`, `numeric_value`, `unit`, `data_state`,
-`observed_at`, `citation_id`. Rankings do not mix units/windows and do not prove causation. For app
-rank histories, lower rank numbers are better; do not interpret this descending metric tool as a
-rank-improvement calculation without inspecting dated history.
+Signals are ranked separately. App install velocity is not growth; update staleness is maintenance
+risk. `app_best_rank_ever` sorts ascending because lower is better.
 
-## `analyze_feature`
+## `analyze_feature` and `build_research_bundle`
 
-`result_type=feature_analysis`; `data` contains `feature`, `cohort_query`, `success_metric`,
-`matching_projects` and `examples` (`SearchHit[]`). This performs retrieval over feature wording; it
-does not return a canonical feature label or prove causation. Use `get_project.features` for the
-structured feature list of a displayed project.
-
-## `build_research_bundle`
-
-`result_type=research_bundle`; `data` contains `question`, `retrieval` (the complete
-`search_projects.data` object), and `answer_guidance`. `answer_guidance.required_sections` lists the
-expected sections and `answer_guidance.claim_rule` requires citation IDs for factual/numeric claims.
+`analyze_feature` returns retrieval-derived matches/examples, not a canonical feature label or
+causal result. `build_research_bundle` wraps complete search data plus required answer sections and
+the citation rule. Their returned project facts follow the same Evidence hydration boundary.
 
 ## `fetch_evidence`
 
-`result_type=evidence`; `data` contains:
+`result_type=evidence`; `data` contains `requested`, resolved count, `missing`, `fact_source` and
+`facts_as_of`. Citation objects appear in the envelope. Reuse citations already present in prior
+tool envelopes and call this tool only for used IDs that remain unresolved.
 
-| Field | Meaning |
-| --- | --- |
-| `requested` | Deduplicated bounded citation IDs requested. |
-| `resolved` | Number resolved into the envelope's `citations`. |
-| `missing` | Requested IDs not found in the active snapshot. |
+## Failure behavior
 
-Every citation actually used in the answer must appear in `citations`, not merely in `requested`.
+- Evidence timeout, 401 or invalid response yields a sanitized service failure; no Lance-fact
+  fallback is allowed.
+- Query preparation that is not ready blocks dense search; follow `retry_after_ms` rather than
+  issuing new phrasings.
+- Preserve every warning and degraded mode. A missing retrieval channel does not validate a fact.
