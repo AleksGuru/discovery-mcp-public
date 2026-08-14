@@ -1,6 +1,6 @@
 {
   "name": "atlas-retrieval",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Evidence-backed Atlas Retrieval research for Codex.",
   "author": {
     "name": "Atlas"

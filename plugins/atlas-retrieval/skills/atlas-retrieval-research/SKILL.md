@@ -72,6 +72,21 @@ reduce the requested scope merely to finish sooner.
 - If Evidence is unavailable, the MCP fails closed. Never fall back to Lance-stored cards or
   metrics.
 
+## Saving user research
+
+Save research only when the user explicitly asks to save, remember, pin or send a hypothesis/list
+to Atlas. Never treat ordinary positive language as permission to write.
+
+- Use only canonical `entity_id` values already returned by Atlas in the current research flow.
+- Call `save_hypothesis` once with a caller-generated stable idempotency key, a concise title and
+  statement, the source query when known, and 1–50 selected projects.
+- Mark each project as `supports`, `contradicts`, `example` or `related` and preserve the user's
+  project-specific feedback without upgrading it into an Evidence fact.
+- Report the returned hypothesis ID and whether the call was an idempotent replay. If a project is
+  rejected as unknown, resolve the intended Atlas entity instead of dropping it silently.
+- Use `list_my_hypotheses` only when the user asks to review their saved Atlas work. It is scoped to
+  the authenticated user; operators review all users separately in Atlas Review.
+
 ## Default analytical views
 
 Unless the user asks for another organization, present three possibly overlapping views. Do not
