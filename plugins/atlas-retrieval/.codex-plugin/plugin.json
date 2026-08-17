@@ -1,9 +1,10 @@
 {
   "name": "atlas-retrieval",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Evidence-backed Atlas research across companies, papers, news, vacancies and book ideas, for Codex.",
   "author": {
-    "name": "Atlas"
+    "name": "Atlas",
+    "url": "https://github.com/AleksGuru/atlas-platform"
   },
   "skills": "./skills/",
   "interface": {
@@ -12,8 +13,15 @@
     "longDescription": "Query Atlas over companies, research papers, news, vacancies and book-derived product ideas, then turn resolved evidence into a decision-ready report where every number carries a citation that links back into Atlas.",
     "developerName": "Atlas",
     "category": "Productivity",
-    "capabilities": ["Research", "MCP"],
-    "defaultPrompt": "Use Atlas Retrieval to research this decision with resolved evidence."
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Find the strongest Atlas projects for this market and cite every number.",
+      "Research this decision across companies, papers, news and hiring signals."
+    ]
   },
   "mcpServers": "./.mcp.json"
 }

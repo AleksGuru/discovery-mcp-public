@@ -13,6 +13,18 @@ before interpreting responses and
 [evidence-contract.md](../atlas-retrieval-research/references/evidence-contract.md) before
 synthesizing claims.
 
+## Step 0: connect Atlas before anything else
+
+If the Atlas tools are missing from your tool list, or a call fails with an authorization error,
+stop and walk the user through connecting, in their language: Atlas is installed but not connected,
+so no data can be read yet; complete the Atlas sign-in Codex offers for this plugin, using the
+individual full name, username and one-time password issued in Atlas Admin; then start a new thread
+so the tools load. Never ask for, or accept, a password or one-time code in chat — the browser flow
+is the only place those belong.
+
+Without Atlas, do not silently fall back to your own web search and present the result as Atlas
+evidence. Say what is unavailable first.
+
 ## The five streams
 
 | Stream | Tool | Marker | One item establishes | It never establishes |

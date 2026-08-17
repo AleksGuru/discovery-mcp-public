@@ -13,6 +13,26 @@ signals, not evidence.
 Read [mcp-response-contract.md](references/mcp-response-contract.md) before interpreting tool
 responses and [evidence-contract.md](references/evidence-contract.md) before synthesizing claims.
 
+## Step 0: connect Atlas before anything else
+
+Do this first, on the first Atlas request of a session, before any research step.
+
+If the Atlas tools are not available — no `search_projects` in your tool list, or a call fails with
+an authorization error — stop and walk the user through connecting, in their language:
+
+1. Say plainly that Atlas is installed but not yet connected, so no data can be read yet.
+2. Ask them to complete the Atlas sign-in that Codex offers for this plugin. It opens a browser
+   window; the plugin authenticates through Atlas OAuth and stores nothing locally.
+3. Tell them the credentials are the individual full name, username and one-time password issued in
+   Atlas Admin. Never ask them to paste a password, a token or a one-time code to you, and never
+   accept one — the browser flow is the only place those belong.
+4. After they confirm, ask them to start a new Codex thread so the tools load, then retry.
+
+If a call fails after a successful sign-in, report the failure verbatim and stop. Do not retry a
+different phrasing, guess headers, or fall back to your own web search and present it as Atlas data.
+
+Once the tools respond, continue with the onboarding below or the research workflow.
+
 ## Short onboarding
 
 When the user asks what Atlas MCP can do or how to use it, answer in the user's language without

@@ -2,7 +2,8 @@
   "mcpServers": {
     "atlas-retrieval": {
       "type": "http",
-      "url": "https://retrieval-lance-mcp-production.up.railway.app/mcp"
+      "url": "https://retrieval-lance-mcp-production.up.railway.app/mcp",
+      "oauth_resource": "https://retrieval-lance-mcp-production.up.railway.app/mcp"
     }
   }
 }
