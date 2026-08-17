@@ -1,12 +1,17 @@
 # Atlas Retrieval plugin
 
-Public Codex distribution for the Atlas Retrieval research plugin. Installing it adds both:
+Public Codex distribution for the Atlas Retrieval research plugin. Installing it adds:
 
-- the `atlas-retrieval-research` skill, which guides evidence-backed project research;
+- the `atlas-retrieval-research` skill, for evidence-backed project discovery and comparison;
+- the `atlas-deep-research` skill, for a cited report drawing on every Atlas stream at once;
 - the production Atlas MCP connection, authenticated through an Atlas beta account.
 
-Version 1.2.1 uses LanceDB for candidate discovery and Evidence/PostgreSQL for the current facts,
-metric history and citations returned by MCP.
+Version 1.5.0 reaches five evidence streams: companies, research papers, news, vacancies and
+book-derived product ideas. Companies use LanceDB for candidate discovery and Evidence/PostgreSQL
+for the current facts, metric history and citations returned by MCP. The other four are derived
+research artifacts and never override a company fact.
+
+Every returned item carries a citation that resolves, and a link back into Atlas.
 
 ## Install
 

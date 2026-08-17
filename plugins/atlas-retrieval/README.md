@@ -1,8 +1,12 @@
 # Atlas Retrieval plugin
 
-Install this as one plugin. The installation exposes both the
-`atlas-retrieval-research` skill and the production `atlas-retrieval` MCP server; do not install
-them separately for normal closed-beta use.
+Install this as one plugin. The installation exposes the `atlas-retrieval-research` and
+`atlas-deep-research` skills together with the production `atlas-retrieval` MCP server; do not
+install them separately for normal closed-beta use.
+
+Use `atlas-retrieval-research` for company discovery and comparison. Use `atlas-deep-research` when
+the answer must combine all five streams — companies, research papers, news, vacancies and
+book-derived product ideas — with your own web search, and be rendered as a fully cited report.
 
 Production retrieval uses LanceDB only to find candidates with OpenAI embeddings and full-text
 search, then reranks them with Nemotron. Current cards, metrics, bounded history and citations are

@@ -122,9 +122,17 @@ Lance value or a historical value that merely once satisfied the threshold.
 | `rescue_ran` | Whether a bounded structured Evidence rescue was attempted. |
 
 The pipeline is OpenAI dense + Lance FTS, RRF fusion, optional graph expansion and Nemotron
-reranking. Explicit filters are verified in one Evidence batch after Lance selection. If too few
-candidates remain, or `metric_sort` is requested, a bounded Evidence rescue may add only entities
-already present in the active Lance generation. Missing indexed entities produce an
+reranking. Only the first `rerank_candidates` fused candidates reach the reranker; anything past
+that boundary keeps its fusion position and is cut by `limit` without ever being scored for
+relevance. Explicit filters are verified in one Evidence batch after Lance selection.
+
+Requesting `metric_sort` always runs a bounded Evidence rescue, and that rescue is **corpus-wide**:
+it queries Evidence in metric order without restricting to the semantic candidates, then keeps only
+entities present in the active Lance generation. This is the one path that can return a relevant
+project the semantic pass never surfaced, which is why a scale pass is a separate call rather than a
+re-sort. The same breadth is its cost — the rescue is bounded by structured filters rather than by
+meaning, so it also returns large products from unrelated categories. `rescue_ran=true` marks that
+the response reached past the semantic candidates. Missing indexed entities produce an
 `unindexed_matches` warning.
 
 Final `items` are current fact records and can support the summary/current-metric table without an
@@ -169,6 +177,53 @@ risk. `app_best_rank_ever` sorts ascending because lower is better.
 `analyze_feature` returns retrieval-derived matches/examples, not a canonical feature label or
 causal result. `build_research_bundle` wraps complete search data plus required answer sections and
 the citation rule. Their returned project facts follow the same Evidence hydration boundary.
+
+## Knowledge tools
+
+`search_knowledge`, `search_research`, `search_news`, `search_vacancies` and `search_book_ideas`
+return `result_type=knowledge_search`. They exist only when the deployment configures the knowledge
+service; otherwise the tools are absent rather than failing at call time.
+
+`data` contains `query`, `corpora`, `requested_limit`, `total_returned`, `groups`,
+`fact_source=knowledge_http`, `facts_as_of` and `presentation`.
+
+### `KnowledgeCorpusResult`
+
+| Field | Meaning |
+| --- | --- |
+| `corpus`, `corpus_label` | `research`, `news`, `vacancies` or `scifi_ideas`, plus its display label. |
+| `evidence_kind` | `published_study`, `reported_event`, `hiring_signal` or `derived_product_hypothesis`. |
+| `status` | `ok`, `empty`, `unavailable`, `error` or `timeout`. `empty` means searched and nothing relevant; the rest mean not searched successfully. |
+| `returned`, `requested_limit` | Item count and the limit that produced it. |
+| `truncated` | The group returned exactly the requested page, so more may exist. |
+| `interpretation` | What one item of this corpus may and may not support. |
+| `warning` | Corpus-level caution, such as a historical vacancy snapshot. |
+
+### `KnowledgeItem`
+
+| Field | Meaning |
+| --- | --- |
+| `marker` | Compact display marker: `R01`, `N02`, `V03`, `B01`. Assigned per response. |
+| `citation_id` | Stable ID accepted by `fetch_knowledge_evidence`: `research:`, `news:`, `vacancy:` or `idea:` plus the item id. Disjoint from the Evidence `card:`/`metric:`/`source:` namespace. |
+| `atlas_url` | Atlas permalink for the document. Always present. |
+| `source_url` | External origin. May be `null`; never invent one. |
+| `dated`, `date_field` | The one quotable date and the field it came from. Research uses `publication_year`, news `edition_generated_at`, vacancies `published_at` falling back to observation dates, book ideas the work's `year`. |
+| `attribution` | Hiring company for a vacancy; work, author and year for a book idea. |
+| `excerpt` | Bounded record text. Long records are truncated with an ellipsis. |
+| `facets` | Corpus-specific fields such as geography, topics, department or feasibility. |
+| `locator`, `rank`, `score` | Diagnostics. Never printed in prose. |
+
+`get_knowledge_document` returns `result_type=knowledge_document` with `found` and `item`.
+`fetch_knowledge_evidence` returns `result_type=knowledge_evidence` with `requested`, `resolved`,
+`items` and `missing`; unknown IDs land in `missing` instead of failing the batch.
+
+### `presentation`
+
+Every knowledge response carries the rendering contract in `data.presentation`: `citation_style`,
+`marker_example`, `marker_rule`, `marker_links_to`, `never_print_in_prose`,
+`source_table_columns`, `completeness_rule`, `date_rule` and `boundary_rule`. It travels with the
+data so a client without the Atlas skill still renders citations correctly. When present, it is
+authoritative.
 
 ## `fetch_evidence`
 

@@ -1,15 +1,15 @@
 {
   "name": "atlas-retrieval",
-  "version": "1.3.1",
-  "description": "Evidence-backed Atlas Retrieval research for Codex.",
+  "version": "1.5.0",
+  "description": "Evidence-backed Atlas research across companies, papers, news, vacancies and book ideas, for Codex.",
   "author": {
     "name": "Atlas"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Atlas Retrieval",
-    "shortDescription": "Evidence-backed research from Atlas Retrieval.",
-    "longDescription": "Query Atlas Retrieval MCP and turn resolved evidence into decision-ready research.",
+    "shortDescription": "Cited research across five Atlas evidence streams.",
+    "longDescription": "Query Atlas over companies, research papers, news, vacancies and book-derived product ideas, then turn resolved evidence into a decision-ready report where every number carries a citation that links back into Atlas.",
     "developerName": "Atlas",
     "category": "Productivity",
     "capabilities": ["Research", "MCP"],
