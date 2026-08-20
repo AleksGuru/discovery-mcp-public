@@ -116,7 +116,7 @@ Lance value or a historical value that merely once satisfied the threshold.
 | `lexical_queries` | Exact plus generated Russian/English FTS variants. |
 | `applied_filters` | Explicit current-value filter contract used by search. |
 | `metric_sort` | Optional current Evidence metric sort. |
-| `items` | Final reranked results, batch-hydrated from Evidence, bounded by `limit`. |
+| `items` | Final results, batch-hydrated from Evidence, bounded by `limit`. Relevance-reranked, except under `metric_sort` (see below). Each item carries `metrics_history` only when the call asked for it. |
 | `candidate_trace` | Larger retrieval-only diagnostic trace before final hydration. |
 | `fact_source`, `facts_as_of` | Current-fact source and Evidence read timestamp. |
 | `rescue_ran` | Whether a bounded structured Evidence rescue was attempted. |
@@ -126,6 +126,12 @@ reranking. Only the first `rerank_candidates` fused candidates reach the reranke
 that boundary keeps its fusion position and is cut by `limit` without ever being scored for
 relevance. Explicit filters are verified in one Evidence batch after Lance selection.
 
+Under `metric_sort` the relevance reranker is skipped entirely and the response order is the
+metric's: the semantic cohort by its Evidence structured rank, then the corpus-wide rescue tail.
+The skip is explicit — `degraded_modes` carries `rerank_skipped_for_metric_sort`. Re-sorting a
+metric pass by wording is exactly the failure this guarantees against: metric leaders rarely
+describe themselves in the query's words and used to be pushed past `limit`.
+
 Requesting `metric_sort` always runs a bounded Evidence rescue, and that rescue is **corpus-wide**:
 it queries Evidence in metric order without restricting to the semantic candidates, then keeps only
 entities present in the active Lance generation. This is the one path that can return a relevant
@@ -134,6 +140,16 @@ re-sort. The same breadth is its cost — the rescue is bounded by structured fi
 meaning, so it also returns large products from unrelated categories. `rescue_ran=true` marks that
 the response reached past the semantic candidates. Missing indexed entities produce an
 `unindexed_matches` warning.
+
+## Metric history on search items
+
+`search_projects(..., include_metrics_history=true)` attaches `metrics_history` to each item:
+per-metric series of dated observations `{value, observed_at}` from the current Evidence ledger.
+Series are whitelisted (website visits, GitHub stars, Trendshift and the app-store family:
+installs, MAU, rating counts), downsampled to at most 12 points preserving both ends, and a
+metric with fewer than 3 dated observations is omitted rather than padded. The flag defaults to
+false; interactive search pays nothing. Read growth strictly from these dated points — the series
+never extrapolates.
 
 Final `items` are current fact records and can support the summary/current-metric table without an
 N+1 `get_project` loop. Use `candidate_trace` only to debug retrieval coverage and ranks.

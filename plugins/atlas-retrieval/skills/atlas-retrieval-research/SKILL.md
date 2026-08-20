@@ -96,9 +96,16 @@ did not verify.
    So issue a **separate** `search_projects` call for the same question with `metric_sort` set to a
    scale or adoption metric such as monthly installs, website visits or downloads. This is not a
    re-sort of the cohort you already have: a `metric_sort` request runs a corpus-wide Evidence pass
-   and can return relevant projects that the semantic pass never surfaced. Repeat with a second
-   metric family when the first has thin coverage, since a project without that metric cannot appear
-   in that ordering at all.
+   and can return relevant projects that the semantic pass never surfaced. The response order is the
+   metric's, not relevance — the reranker is skipped and `degraded_modes` says
+   `rerank_skipped_for_metric_sort` — so the head of the list is the category's leaders by that
+   metric. Repeat with a second metric family when the first has thin coverage, since a project
+   without that metric cannot appear in that ordering at all.
+
+   When the question is about growth or momentum, pass `include_metrics_history=true`: each item
+   then carries `metrics_history` — dated observation series (≤12 points per metric, whitelisted
+   metric families, series shorter than 3 observations omitted). Read growth strictly from those
+   dated points.
 7. **Search the knowledge corpora.** When available, call `search_knowledge` — or the per-corpus
    `search_research`, `search_news`, `search_vacancies`, `search_book_ideas` — for the same
    question. They answer what companies cannot: what studies measured, what was reported and when,
